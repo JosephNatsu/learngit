@@ -1,13 +1,14 @@
 #数据预处理
-m=read.csv('diabetes.csv')
+m=read.csv('D:\\R\\diabetes.csv')
 X=m[,1:10]
 Y=m[,11]
 X=as.matrix(X)
-M=t(X)%*%X
 for(i in 1:10){
+  X[,i]=(X[,i]-mean(X[,i]))/sd(X[,i])
+  M=t(X)%*%X
   X[,i]=X[,i]/sqrt(diag(M)[i])
 }
-Y=Y/sqrt(t(Y)%*%Y) ##对X,Y进行标准化处理，使其二范数为一
+Y=Y-mean(Y)##对X,Y进行标准化处理，使其二范数为一
 
 #初始值确定
 r0=Y
@@ -15,9 +16,9 @@ R=r0
 beita0=numeric(10)
 beita=beita0
 S=1:10
-sign1=which.max(t(Y)%*%X) ##激活集
+sign1=which.max(abs(t(Y)%*%X)) ##激活集
 Safter=S[-sign1]  
-lamda0=t(r0)%*%X[,sign1]/sqrt(t(r0)%*%r0)
+lamda0=t(r0)%*%X[,sign1]
 lamda0=as.numeric(lamda0)
 lamda=lamda0
 Delta=numeric(10)
@@ -26,10 +27,16 @@ Delta=numeric(10)
 for(i in 1:10){
   deltak=solve(t(X[,sign1])%*%X[,sign1])%*%t(X[,sign1])%*%r0/lamda0
   Delta[sign1]=deltak
-  for(lamda1 in seq(lamda0,0,-1e-5) ) {
+  if(i>9){
+    print(i)
+    beita0=beita0+(lamda0)*Delta
+    beita=cbind(beita,beita0)
+  }
+  print(lamda0)
+  for(lamda1 in seq(lamda0,0,-0.1) ) {
     r1=r0-(lamda0-lamda1)*X%*%Delta
-    if(abs(max(abs(t(r1)%*%X[,Safter]))/(sqrt(t(r1)%*%r1))-lamda1)<=5e-6 )## 判断是否满足角度相等
-    {l=which.max(t(r1)%*%X[,Safter])
+    if(abs(max(abs(t(r1)%*%X[,Safter]))-lamda1)<=0.05 )## 判断是否满足角度相等
+    {l=which.max(abs(t(r1)%*%X[,Safter]))
     sign1=c(sign1,Safter[l])
     lamda=c(lamda,lamda1)
     R=cbind(R,r1)    
@@ -44,8 +51,8 @@ for(i in 1:10){
 }
 
 #绘图分析
-proc=apply(abs(beita),2,max)
-proc=proc/proc[10]
+proc=colSums(abs(beita))
+proc=proc/proc[11]
 xrange=c(0,1.1)
 yrange=range(beita)
 plot(xrange,yrange,type='n',xlab='|beita(i)|/max|beita|',ylab='coefficients')
@@ -58,8 +65,7 @@ for(i in 1:10){
 title('迭代结果')
 legend('right',inset=-0.02,paste('变量',1:10),cex=0.6,col=colors,lty=linetype,lwd=3)
 
-#lars与lasso、forward.stagewise、stepwise求解路径对比
-library(lars)
+#lars与lasso、forward.stagewise、stepwise求解路径对比ainstall.packages("lars")
 mlas <- lars(X,Y,type="lasso")
 mlar <- lars(X,Y,type="lar")
 mfsw<- lars(X,Y,type="forward.stagewise") 
